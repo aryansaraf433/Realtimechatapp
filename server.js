@@ -1,30 +1,42 @@
-const express = require('express');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
 
-const PORT = 3000;
+// Allow CORS from Netlify frontend
+app.use(cors({
+  origin: "https://aryan11.netlify.app", // ✅ your frontend domain
+  methods: ["GET", "POST"]
+}));
 
-app.use(express.static('public'));
+const server = http.createServer(app);
 
-io.on('connection', (socket) => {
-  console.log('New user connected');
+const io = new Server(server, {
+  cors: {
+    origin: "https://aryan11.netlify.app", // ✅ required for Socket.IO
+    methods: ["GET", "POST"]
+  }
+});
 
-  socket.on('join', (username) => {
-    socket.username = username;
-    io.emit('message', { user: 'System', text: `${username} joined the chat` });
+io.on("connection", (socket) => {
+  console.log("✅ New client connected");
+
+  socket.on("chat message", (msg) => {
+    console.log("Message:", msg);
+    io.emit("chat message", msg);
   });
 
-  socket.on('chat message', (msg) => {
-    io.emit('message', { user: socket.username, text: msg });
-  });
-
-  socket.on('disconnect', () => {
-    if (socket.username)
-      io.emit('message', { user: 'System', text: `${socket.username} left the chat` });
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected");
   });
 });
 
-http.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+app.get("/", (req, res) => {
+  res.send("Chat backend is running");
+});
+
+server.listen(3000, () => {
+  console.log("🚀 Server started on port 3000");
 });
